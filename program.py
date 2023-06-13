@@ -6,6 +6,7 @@ devtool = kdp.Kdp()
 
 devtool.launch_chrome()
 
-devtool.navigate('https://google.com')
+devtool.navigate('https://example.com/')
 
-print(devtool.find_element_by_id('qbc'))
+time.sleep(1)
+print(devtool.find_element_by_selector('h1'))

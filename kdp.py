@@ -29,11 +29,10 @@ class Kdp:
             self.tabs.append(kdp_tab.KdpTab(tab))
 
     def send_command(self, command):
-
+        
         command['id'] = random.randint(0, 10000)
 
-        jCommand = json.dumps(command)
-        return self.websocket.send(jCommand)
+        return self.websocket.send(command)
 
     def connect_to_tab(self, index):
 
@@ -51,13 +50,87 @@ class Kdp:
 
     def navigate(self, url):
         return self.send_command({ 'method': 'Page.navigate', 'params': { 'url': url }})
+    
+    def get_document(self):
+        document = self.send_command({ 'method': 'DOM.getDocument', 'params': { 'depth': -1 } })
 
+        if 'error' in document:
+            raise Exception('error getting document')
+        
+        return document['result']
+    
+    # def find_elements_by_xpath(self, xpath):
+    #     result = self.send_command({ 'method': 'Runtime.evaluate', 'params': { 'expression': xpath}})
+
+    #     if ('error' in result):
+    #         raise Exception('Element is not found with xpath ' + xpath)
+        
+    #     return result['result']
+    
+    def find_all_element_by_selector(self, selector):
+        document = self.get_document()
+        result = self.send_command({ 'method': 'DOM.querySelectorAll', 'params': { 'nodeId': document['root']['nodeId'], 'selector': selector}})
+
+        if ('error' in result):
+            raise Exception('Element is not found with selector ' + selector)
+        
+        return result['result']
+
+    def find_element_by_selector(self, selector):
+        document = self.get_document()
+        result = self.send_command({ 'method': 'DOM.querySelector', 'params': { 'nodeId': document['root']['nodeId'], 'selector': selector}})
+
+        if ('error' in result):
+            raise Exception('Element is not found with selector ' + selector)
+        
+        return result['result']
+
+    def find_all_element_by_class_name(self, class_name):
+        document = self.get_document()
+        result = self.send_command({ 'method': 'DOM.querySelectorAll', 'params': { 'nodeId': document['root']['nodeId'], 'selector': '.' + class_name}})
+
+        if ('error' in result):
+            raise Exception('Element is not found with class name ' + class_name)
+        
+        return result['result']
+
+    def find_element_by_class_name(self, class_name):
+        document = self.get_document()
+        result = self.send_command({ 'method': 'DOM.querySelector', 'params': { 'nodeId': document['root']['nodeId'], 'selector': '.' + class_name}})
+
+        if ('error' in result):
+            raise Exception('Element is not found with class name ' + class_name)
+        
+        return result['result']
+
+    def find_all_element_by_id(self, id):
+
+        document = self.get_document()
+        result = self.send_command({ 'method': 'DOM.querySelectorAll', 'params': { 'nodeId': document['root']['nodeId'], 'selector': '#' + id}})
+
+        if ('error' in result):
+            raise Exception('Element is not found with id ' + id)
+        
+        return result['result']
+    
     def find_element_by_id(self, id):
-        rootNode = self.send_command({ 'method': 'DOM.getDocument', 'params': { 'depth': 0 } })
 
-        print(rootNode)
+        document = self.get_document()
+        result = self.send_command({ 'method': 'DOM.querySelector', 'params': { 'nodeId': document['root']['nodeId'], 'selector': '#' + id}})
 
-        return self.send_command({ 'method': 'DOM.querySelector', 'params': { 'nodeId': rootNode['id'], 'selector': '#' + id}})
+        if ('error' in result):
+            raise Exception('Element is not found with id ' + id)
+        
+        return result['result']
+    
+    def get_property(self, node, property_name):
+        
+        if 'nodeId' not in node:
+            raise Exception('not found nodeId')
+        
+        result = self.send_command({ 'method': 'DOM.describeNode', 'params': { 'nodeId': node['nodeId'] }})
+
+        return result['result']
 
     def launch_chrome(self):
         browsers.launch('chrome', args=['-remote-debugging-port=' + self.port, '--remote-allow-origins=' + self.host])

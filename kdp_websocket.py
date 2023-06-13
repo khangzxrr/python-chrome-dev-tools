@@ -8,6 +8,8 @@ import json
 
 class KdpWebsocket:
     is_connected = False
+
+    waiting_id = 0
     is_waiting = False
 
     websocket_lock = threading.Lock()
@@ -21,9 +23,10 @@ class KdpWebsocket:
 
         return is_waiting
 
-    def set_is_waiting_for_result(self, is_waiting_for_result):
+    def set_is_waiting_for_result(self, is_waiting_for_result, nodeId = -1):
         self.result_lock.acquire()
         self.is_waiting = is_waiting_for_result
+        self.waiting_id = nodeId
         self.result_lock.release()
 
     def set_is_connected(self, is_connected):
@@ -35,8 +38,11 @@ class KdpWebsocket:
 
     def on_message(self, ws, message):
 
-        self.result = message
-        self.set_is_waiting_for_result(False)
+        jsonMessage = json.loads(message)
+
+        if  self.is_waiting_for_result() and ('id' in jsonMessage) and (jsonMessage['id'] == self.waiting_id):
+            self.result = jsonMessage
+            self.set_is_waiting_for_result(False)   
         
 
     def on_error(self, ws, error):
@@ -56,8 +62,6 @@ class KdpWebsocket:
 
     def on_open(self, ws):
         self.set_is_connected(True)
-
-        print('on open')
 
 
     def connect(self, url):
@@ -85,11 +89,12 @@ class KdpWebsocket:
         self.websocket.close()
 
     def send(self, requestJsonData):
-        self.set_is_waiting_for_result(True)
-        self.websocket.send(requestJsonData)
+        self.set_is_waiting_for_result(True, requestJsonData['id'])
+
+        self.websocket.send(json.dumps(requestJsonData))
 
 # phai kiem tra ID tra ve
         while self.is_waiting_for_result():
             time.sleep(0.1)
 
-        return json.loads(self.result) 
+        return self.result
