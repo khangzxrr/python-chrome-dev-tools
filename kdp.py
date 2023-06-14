@@ -10,9 +10,9 @@ import kdp_websocket
 
 class Kdp:
     port = '9222'
-    host = 'http://localhost:' + port
+    host = 'http://localhost:' + port 
 
-    tabs = []
+    target = None
     websocket = None
 
     def make_endpoint(self,endpoint):
@@ -21,36 +21,49 @@ class Kdp:
     def get(self, endpoint):
         r = requests.get(self.make_endpoint(endpoint))
         return r.json()
+    
 
     def get_tabs(self):
         tabs = self.get('/json/list')
 
+        tab_list = []
+
         for tab in tabs:
-            self.tabs.append(kdp_tab.KdpTab(tab))
+            tab_list.append(kdp_tab.KdpTab(tab))
+
+        return tab_list
 
     def send_command(self, command):
         
+        if self.target is not None and 'sessionId' in self.target:
+            command['sessionId'] = self.target['sessionId']
+
         command['id'] = random.randint(0, 10000)
 
         return self.websocket.send(command)
 
-    def connect_to_tab(self, index):
-
-        if index >= len(self.tabs):
-            raise Exception('index >= tabs length')
-        
-        print('connect to tab id: ' + self.tabs[0].id)
-
-        if (self.websocket != None):
-            self.websocket.close()
-
-        self.websocket = kdp_websocket.KdpWebsocket()
-        self.websocket.connect(self.tabs[0].websocketDebuggerUrl)
-
-
-    def navigate(self, url):
-        return self.send_command({ 'method': 'Page.navigate', 'params': { 'url': url }})
+    def navigate(self,  url):
+        return self.send_command({   'method': 'Page.navigate', 'params': { 'url': url }})
     
+    def attach_target(self, target):
+        attachResult = self.send_command({ 'method': 'Target.attachToTarget', 'params': { 'targetId': target['targetId'], 'flatten': True}})
+        return attachResult['result']
+    
+    def get_targets(self):
+        return self.send_command({ 'method': 'Target.getTargets'})['result']['targetInfos']
+    
+    def get_current_window(self):
+        return self.target
+    
+    def close(self):
+
+
+        closeResult = self.send_command({ 'method': 'Target.closeTarget', 'params': { 'targetId': self.target['targetId']}})['result']
+        
+        self.target.pop('sessionId')
+
+        return closeResult
+
     def get_document(self):
         document = self.send_command({ 'method': 'DOM.getDocument', 'params': { 'depth': -1 } })
 
@@ -123,19 +136,55 @@ class Kdp:
         
         return result['result']
     
-    def get_property(self, node, property_name):
-        
+    def check_node_id(self, node):
         if 'nodeId' not in node:
             raise Exception('not found nodeId')
+        
+    def open_new_tab(self):
+        self.send_command({ 'method': 'Target.createTarget', 'params': { 'url': ''}})
+    
+    def get_attribute(self, node, attribute_name):
+        self.check_node_id(node)
+
+        result = self.send_command({ 'method': 'DOM.getAttributes', 'params': { 'nodeId': node['nodeId']}})
+
+        if attribute_name not in result['result']['attributes']:
+            raise Exception('not found attribute name ' + attribute_name)
+
+        index_of_attribute = result['result']['attributes'].index(attribute_name)
+        return result['result']['attributes'][index_of_attribute + 1] 
+    
+    def describe_node(self, node):
+        self.check_node_id(node)
         
         result = self.send_command({ 'method': 'DOM.describeNode', 'params': { 'nodeId': node['nodeId'] }})
 
         return result['result']
+    
+    def get_window_handles(self):
+        result = self.send_command({ 'method': 'Target.getTargets'})
+
+        return result['result']['targetInfos']
+
+    def switch_to_window(self, target):
+
+        attachResult = self.attach_target(target)
+
+
+        self.target = target
+
+        self.target['sessionId'] = attachResult['sessionId']
 
     def launch_chrome(self):
-        browsers.launch('chrome', args=['-remote-debugging-port=' + self.port, '--remote-allow-origins=' + self.host])
-        self.get_tabs()
+        browsers.launch('chrome', args=['--remote-debugging-port=' + self.port, '--remote-allow-origins=' + self.host])
+        
+        websocketUrl = self.get('/json/version')['webSocketDebuggerUrl']
 
-        self.connect_to_tab(0)
+        self.websocket = kdp_websocket.KdpWebsocket()
+        self.websocket.connect(websocketUrl)
+
+        targets = self.get_targets()
+
+        self.switch_to_window(targets[0])
 
         
