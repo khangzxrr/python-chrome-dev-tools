@@ -65,20 +65,12 @@ class Kdp:
         return closeResult
 
     def get_document(self):
-        document = self.send_command({ 'method': 'DOM.getDocument', 'params': { 'depth': -1 } })
+        document = self.send_command({ 'method': 'DOM.getDocument' })
 
         if 'error' in document:
             raise Exception('error getting document')
         
         return document['result']
-    
-    # def find_elements_by_xpath(self, xpath):
-    #     result = self.send_command({ 'method': 'Runtime.evaluate', 'params': { 'expression': xpath}})
-
-    #     if ('error' in result):
-    #         raise Exception('Element is not found with xpath ' + xpath)
-        
-    #     return result['result']
     
     def find_all_element_by_selector(self, selector):
         document = self.get_document()
@@ -88,6 +80,15 @@ class Kdp:
             raise Exception('Element is not found with selector ' + selector)
         
         return result['result']
+    
+    def find_elements_by_xpath(self, xpath):
+        document = self.get_document()
+        search_result = self.send_command({ 'method': 'DOM.performSearch', 'params': { 'query': xpath }})
+
+        result = self.send_command({ 'method': 'DOM.getSearchResults', 'params': { 'searchId': search_result['result']['searchId'], 'fromIndex': 0, 'toIndex': 1    }})
+
+        return result['result']
+
 
     def find_element_by_selector(self, selector):
         document = self.get_document()
@@ -165,6 +166,9 @@ class Kdp:
         result = self.send_command({ 'method': 'Target.getTargets'})
 
         return result['result']['targetInfos']
+    
+    def enable_DOM(self):
+        self.send_command({ 'method': 'DOM.enable'})
 
     def switch_to_window(self, target):
 
@@ -172,8 +176,10 @@ class Kdp:
 
 
         self.target = target
-
         self.target['sessionId'] = attachResult['sessionId']
+
+        self.enable_DOM()
+
 
     def launch_chrome(self):
         browsers.launch('chrome', args=['--remote-debugging-port=' + self.port, '--remote-allow-origins=' + self.host])

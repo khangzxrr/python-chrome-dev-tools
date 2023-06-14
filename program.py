@@ -32,6 +32,8 @@ window_handles = devtool.get_window_handles()
 
 devtool.switch_to_window(window_handles[0])
 
-devtool.navigate('https://google.com')
+h1_element = devtool.find_elements_by_xpath('/html/body/div/h1')
+
+
 
 
