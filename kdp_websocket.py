@@ -2,7 +2,6 @@ import threading
 import websocket
 import time
 
-import rel
 
 import json
 
