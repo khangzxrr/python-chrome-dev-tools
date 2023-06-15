@@ -8,8 +8,6 @@ devtool.launch_chrome()
 
 devtool.navigate('https://example.com/')
 
-time.sleep(1)
-
 a_element = devtool.find_element_by_selector('a')
 
 href_attribute = devtool.get_attribute(a_element, 'href') 
@@ -32,7 +30,9 @@ window_handles = devtool.get_window_handles()
 
 devtool.switch_to_window(window_handles[0])
 
-h1_element = devtool.find_elements_by_xpath('/html/body/div/h1')
+h1_element = devtool.find_all_element_by_xpath('/html/body/div/h1')
+
+print(h1_element[0])
 
 
 

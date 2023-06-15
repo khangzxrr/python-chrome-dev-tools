@@ -41,12 +41,15 @@ class Kdp:
         command['id'] = random.randint(0, 10000)
 
         return self.websocket.send(command)
-
+    
     def navigate(self,  url):
         return self.send_command({   'method': 'Page.navigate', 'params': { 'url': url }})
     
     def attach_target(self, target):
         attachResult = self.send_command({ 'method': 'Target.attachToTarget', 'params': { 'targetId': target['targetId'], 'flatten': True}})
+     
+        self.enable_features()
+     
         return attachResult['result']
     
     def get_targets(self):
@@ -72,6 +75,10 @@ class Kdp:
         
         return document['result']
     
+
+    def seperate_nodes(self, nodes):
+        return list(map(lambda nodeId: { 'nodeId': nodeId }, nodes['nodeIds']))
+    
     def find_all_element_by_selector(self, selector):
         document = self.get_document()
         result = self.send_command({ 'method': 'DOM.querySelectorAll', 'params': { 'nodeId': document['root']['nodeId'], 'selector': selector}})
@@ -79,15 +86,16 @@ class Kdp:
         if ('error' in result):
             raise Exception('Element is not found with selector ' + selector)
         
-        return result['result']
+        return self.seperate_nodes(result['result'])
+                              
     
-    def find_elements_by_xpath(self, xpath):
+    def find_all_element_by_xpath(self, xpath):
         document = self.get_document()
         search_result = self.send_command({ 'method': 'DOM.performSearch', 'params': { 'query': xpath }})
 
         result = self.send_command({ 'method': 'DOM.getSearchResults', 'params': { 'searchId': search_result['result']['searchId'], 'fromIndex': 0, 'toIndex': 1    }})
 
-        return result['result']
+        return self.seperate_nodes(result['result'])
 
 
     def find_element_by_selector(self, selector):
@@ -106,7 +114,7 @@ class Kdp:
         if ('error' in result):
             raise Exception('Element is not found with class name ' + class_name)
         
-        return result['result']
+        return self.seperate_nodes(result['result'])
 
     def find_element_by_class_name(self, class_name):
         document = self.get_document()
@@ -114,16 +122,6 @@ class Kdp:
 
         if ('error' in result):
             raise Exception('Element is not found with class name ' + class_name)
-        
-        return result['result']
-
-    def find_all_element_by_id(self, id):
-
-        document = self.get_document()
-        result = self.send_command({ 'method': 'DOM.querySelectorAll', 'params': { 'nodeId': document['root']['nodeId'], 'selector': '#' + id}})
-
-        if ('error' in result):
-            raise Exception('Element is not found with id ' + id)
         
         return result['result']
     
@@ -167,7 +165,8 @@ class Kdp:
 
         return result['result']['targetInfos']
     
-    def enable_DOM(self):
+    def enable_features(self):
+        self.send_command({ 'method': 'Page.setLifecycleEventsEnabled', 'params': { 'enabled': True } })
         self.send_command({ 'method': 'DOM.enable'})
 
     def switch_to_window(self, target):
@@ -178,7 +177,7 @@ class Kdp:
         self.target = target
         self.target['sessionId'] = attachResult['sessionId']
 
-        self.enable_DOM()
+        
 
 
     def launch_chrome(self):
@@ -190,6 +189,8 @@ class Kdp:
         self.websocket.connect(websocketUrl)
 
         targets = self.get_targets()
+
+        
 
         self.switch_to_window(targets[0])
 

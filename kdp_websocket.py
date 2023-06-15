@@ -11,9 +11,24 @@ class KdpWebsocket:
     waiting_id = 0
     is_waiting = False
 
+    loading = False
+    loading_lock = threading.Lock()
+
     websocket_lock = threading.Lock()
 
     result_lock = threading.Lock()
+
+    def set_loading(self, isLoading):
+        self.loading_lock.acquire()
+        self.loading = isLoading
+        self.loading_lock.release()
+
+    def get_loading(self):
+        self.loading_lock.acquire()
+        isLoading = self.loading
+        self.loading_lock.release()
+
+        return isLoading
 
     def is_waiting_for_result(self):
         self.result_lock.acquire()
@@ -38,6 +53,12 @@ class KdpWebsocket:
     def on_message(self, ws, message):
 
         jsonMessage = json.loads(message)
+
+        if 'method' in jsonMessage and jsonMessage['method'] == 'Page.lifecycleEvent':
+            if jsonMessage['params']['name'] == 'load':
+                self.set_loading(True)
+            elif jsonMessage['params']['name'] == 'networkIdle':
+                self.set_loading(False)
 
         if  self.is_waiting_for_result() and ('id' in jsonMessage) and (jsonMessage['id'] == self.waiting_id):
             self.result = jsonMessage
@@ -79,7 +100,7 @@ class KdpWebsocket:
 
 
 
-        while not self.is_websocket_connected():
+        while not self.is_websocket_connected() or self.get_loading():
             time.sleep(0.1)
 
         print('initiated and connected to websocket')
@@ -95,5 +116,7 @@ class KdpWebsocket:
 # phai kiem tra ID tra ve
         while self.is_waiting_for_result():
             time.sleep(0.1)
+
+        
 
         return self.result
