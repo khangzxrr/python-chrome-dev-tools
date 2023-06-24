@@ -16,6 +16,7 @@ class KdpWebsocket:
         jsonMessage = json.loads(message)
 
         print(jsonMessage)
+        print('\n\n')
 
         # if 'method' in jsonMessage and jsonMessage['method'] == 'Page.lifecycleEvent':
         #     if jsonMessage['params']['name'] == 'load':

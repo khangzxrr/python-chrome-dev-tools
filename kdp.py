@@ -51,8 +51,6 @@ class Kdp:
     def attach_target(self, target):
         attachResult = self.send_command({ 'method': 'Target.attachToTarget', 'params': { 'targetId': target['targetId'], 'flatten': True}})
      
-        self.enable_features()
-     
         return attachResult['result']
     
     def get_targets(self):
@@ -178,6 +176,8 @@ class Kdp:
 
         self.target = target
         self.target['sessionId'] = attachResult['sessionId']
+
+        self.enable_features()
 
         print(self.target)
 
