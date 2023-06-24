@@ -2,67 +2,36 @@ import threading
 import websocket
 import time
 
+import asyncio
 
 import json
 
 class KdpWebsocket:
     is_connected = False
 
-    waiting_id = 0
-    is_waiting = False
-
-    loading = False
-    loading_lock = threading.Lock()
-
-    websocket_lock = threading.Lock()
-
-    result_lock = threading.Lock()
-
-    def set_loading(self, isLoading):
-        self.loading_lock.acquire()
-        self.loading = isLoading
-        self.loading_lock.release()
-
-    def get_loading(self):
-        self.loading_lock.acquire()
-        isLoading = self.loading
-        self.loading_lock.release()
-
-        return isLoading
-
-    def is_waiting_for_result(self):
-        self.result_lock.acquire()
-        is_waiting = self.is_waiting
-        self.result_lock.release()
-
-        return is_waiting
-
-    def set_is_waiting_for_result(self, is_waiting_for_result, nodeId = -1):
-        self.result_lock.acquire()
-        self.is_waiting = is_waiting_for_result
-        self.waiting_id = nodeId
-        self.result_lock.release()
-
-    def set_is_connected(self, is_connected):
-        self.websocket_lock.acquire()
-        
-        self.is_connected = is_connected
-        
-        self.websocket_lock.release()
+    command_response = {}
 
     def on_message(self, ws, message):
 
         jsonMessage = json.loads(message)
 
-        if 'method' in jsonMessage and jsonMessage['method'] == 'Page.lifecycleEvent':
-            if jsonMessage['params']['name'] == 'load':
-                self.set_loading(True)
-            elif jsonMessage['params']['name'] == 'networkIdle':
-                self.set_loading(False)
+        print(jsonMessage)
 
-        if  self.is_waiting_for_result() and ('id' in jsonMessage) and (jsonMessage['id'] == self.waiting_id):
-            self.result = jsonMessage
-            self.set_is_waiting_for_result(False)   
+        # if 'method' in jsonMessage and jsonMessage['method'] == 'Page.lifecycleEvent':
+        #     if jsonMessage['params']['name'] == 'load':
+        #         self.set_loading(True)
+        #     elif jsonMessage['params']['name'] == 'networkIdle':
+        #         self.set_loading(False)
+
+        if 'id' in jsonMessage:
+
+            response_future = self.command_response[jsonMessage['id']]
+
+            self.event_loop.call_soon_threadsafe(response_future.set_result, jsonMessage) 
+                
+        # if  self.is_waiting_for_result() and ('id' in jsonMessage) and (jsonMessage['id'] == self.waiting_id):
+        #     self.result = jsonMessage
+        #     self.set_is_waiting_for_result(False)   
         
 
     def on_error(self, ws, error):
@@ -71,23 +40,16 @@ class KdpWebsocket:
     def on_close(self, ws, close_status_code, close_msg):
         print("### closed ###")
 
-    def is_websocket_connected(self):
-        self.websocket_lock.acquire()
-        
-        is_connected = self.is_connected
-
-        self.websocket_lock.release()
-
-        return is_connected
-
     def on_open(self, ws):
-        self.set_is_connected(True)
+        print('connected and emit is connect future')
 
+        self.event_loop.call_soon_threadsafe(self.is_connected_future.set_result, 'OK')
 
-    def connect(self, url):
+    async def connect(self, url):
 
         self.url = url
-        self.is_connected = False
+
+        self.event_loop = asyncio.get_event_loop()
 
         self.websocket = websocket.WebSocketApp(self.url,
                               on_open=self.on_open,
@@ -98,25 +60,27 @@ class KdpWebsocket:
         self.websocket_thread = threading.Thread(target=self.websocket.run_forever)
         self.websocket_thread.start()
 
+        self.is_connected_future = self.event_loop.create_future()
 
-
-        while not self.is_websocket_connected() or self.get_loading():
-            time.sleep(0.1)
+        await self.is_connected_future
 
         print('initiated and connected to websocket')
 
     def close(self):
         self.websocket.close()
 
-    def send(self, requestJsonData):
-        self.set_is_waiting_for_result(True, requestJsonData['id'])
-
+    async def send(self, requestJsonData):
+        
         self.websocket.send(json.dumps(requestJsonData))
 
-# phai kiem tra ID tra ve
-        while self.is_waiting_for_result():
-            time.sleep(0.1)
-
         
+        self.command_response[requestJsonData['id']] = self.event_loop.create_future()
+        command_future = self.command_response[requestJsonData['id']]
 
-        return self.result
+        await command_future
+
+        response = command_future.result()
+
+        self.command_response.pop(requestJsonData['id'])
+
+        return response

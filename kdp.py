@@ -5,6 +5,8 @@ import requests
 import json
 import random
 
+import asyncio
+
 import kdp_tab
 import kdp_websocket
 
@@ -40,7 +42,8 @@ class Kdp:
 
         command['id'] = random.randint(0, 10000)
 
-        return self.websocket.send(command)
+        result = asyncio.get_event_loop().run_until_complete(self.websocket.send(command))
+        return result
     
     def navigate(self,  url):
         return self.send_command({   'method': 'Page.navigate', 'params': { 'url': url }})
@@ -173,9 +176,10 @@ class Kdp:
 
         attachResult = self.attach_target(target)
 
-
         self.target = target
         self.target['sessionId'] = attachResult['sessionId']
+
+        print(self.target)
 
         
 
@@ -186,11 +190,11 @@ class Kdp:
         websocketUrl = self.get('/json/version')['webSocketDebuggerUrl']
 
         self.websocket = kdp_websocket.KdpWebsocket()
-        self.websocket.connect(websocketUrl)
 
-        targets = self.get_targets()
 
+        asyncio.get_event_loop().run_until_complete(self.websocket.connect(websocketUrl))
         
+        targets = self.get_targets()
 
         self.switch_to_window(targets[0])
 
