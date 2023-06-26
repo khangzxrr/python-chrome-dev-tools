@@ -46,7 +46,8 @@ class Kdp:
         return result
     
     def navigate(self,  url):
-        return self.send_command({   'method': 'Page.navigate', 'params': { 'url': url }})
+        self.send_command({   'method': 'Page.navigate', 'params': { 'url': url }})
+        
     
     def attach_target(self, target):
         attachResult = self.send_command({ 'method': 'Target.attachToTarget', 'params': { 'targetId': target['targetId'], 'flatten': True}})
@@ -167,8 +168,7 @@ class Kdp:
         return result['result']['targetInfos']
     
     def enable_features(self):
-        self.send_command({ 'method': 'Page.setLifecycleEventsEnabled', 'params': { 'enabled': True } })
-        self.send_command({ 'method': 'DOM.enable'})
+        self.send_command({ 'method': 'Page.enable', 'params': {}})
 
     def switch_to_window(self, target):
 
@@ -179,7 +179,6 @@ class Kdp:
 
         self.enable_features()
 
-        print(self.target)
 
         
 

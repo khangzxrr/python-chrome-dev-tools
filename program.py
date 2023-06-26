@@ -6,32 +6,42 @@ devtool = kdp.Kdp()
 
 devtool.launch_chrome()
 
-print('yeah')
+
+#navigate to google get a href
+
+print('navigate to google.com')
+
+devtool.navigate('https://google.com')
+
+a_element = devtool.find_element_by_selector('a')
+href_attribute = devtool.get_attribute(a_element, 'href') 
+print(href_attribute)
+
+#======= navigate to example.com first a href
 
 devtool.navigate('https://example.com/')
 
-# a_element = devtool.find_element_by_selector('a')
+current_handle = devtool.get_current_window()
 
-# href_attribute = devtool.get_attribute(a_element, 'href') 
-# print(href_attribute)
+a_element = devtool.find_element_by_selector('a')
 
-# devtool.open_new_tab()
+href_attribute = devtool.get_attribute(a_element, 'href') 
+print(href_attribute)
 
-# window_handles = devtool.get_window_handles() 
+#=======================
 
-# devtool.switch_to_window(window_handles[0])
+devtool.open_new_tab()
+5
+window_handles = devtool.get_window_handles() 
 
-# current_handle = devtool.get_current_window()
-# print(current_handle)
+devtool.switch_to_window(window_handles[0])
 
-# devtool.navigate('https://google.com')
+devtool.navigate('https://mdbootstrap.com/docs/standard/forms/checkbox/')
 
-# devtool.close()
 
-# window_handles = devtool.get_window_handles() 
+boat_checkbox = devtool.find_element_by_id('flexCheckChecked')
 
-# devtool.switch_to_window(window_handles[0])
-
+print(boat_checkbox)
 # h1_element = devtool.find_all_element_by_xpath('/html/body/div/h1')
 
 # print(h1_element[0])

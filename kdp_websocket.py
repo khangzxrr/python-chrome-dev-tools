@@ -10,30 +10,32 @@ class KdpWebsocket:
     is_connected = False
 
     command_response = {}
+    event_response = None
 
     def on_message(self, ws, message):
 
         jsonMessage = json.loads(message)
 
-        print(jsonMessage)
-        print('\n\n')
+        # print(jsonMessage)
+        # print('\n')
+        
 
-        # if 'method' in jsonMessage and jsonMessage['method'] == 'Page.lifecycleEvent':
-        #     if jsonMessage['params']['name'] == 'load':
-        #         self.set_loading(True)
-        #     elif jsonMessage['params']['name'] == 'networkIdle':
-        #         self.set_loading(False)
+        if 'method' in jsonMessage:
+            print(jsonMessage)
+            
+            if jsonMessage['method'] == 'Page.frameStartedLoading':
+                self.event_response = self.event_loop.create_future()
+
+            if jsonMessage['method'] == 'Page.frameStoppedLoading':
+                self.event_loop.call_soon_threadsafe(self.event_response.set_result, 'OK')
+
 
         if 'id' in jsonMessage:
 
             response_future = self.command_response[jsonMessage['id']]
 
             self.event_loop.call_soon_threadsafe(response_future.set_result, jsonMessage) 
-                
-        # if  self.is_waiting_for_result() and ('id' in jsonMessage) and (jsonMessage['id'] == self.waiting_id):
-        #     self.result = jsonMessage
-        #     self.set_is_waiting_for_result(False)   
-        
+
 
     def on_error(self, ws, error):
         print(error)
@@ -70,6 +72,16 @@ class KdpWebsocket:
     def close(self):
         self.websocket.close()
 
+    async def wait_for_navigate(self):
+
+        if self.event_response == None:
+            return
+        
+        await self.event_response        
+        self.event_response = None
+
+        print ('finish navigate')
+
     async def send(self, requestJsonData):
         
         self.websocket.send(json.dumps(requestJsonData))
@@ -79,9 +91,16 @@ class KdpWebsocket:
         command_future = self.command_response[requestJsonData['id']]
 
         await command_future
-
+        self.command_response.pop(requestJsonData['id'])
         response = command_future.result()
 
-        self.command_response.pop(requestJsonData['id'])
+        await asyncio.sleep(0.5)
+
+        await self.wait_for_navigate()
+
+        if requestJsonData['method'] == 'Page.navigate':
+            await asyncio.sleep(1)    
+
+        
 
         return response
