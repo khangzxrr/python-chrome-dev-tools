@@ -50,7 +50,7 @@ devtool.click_by_css_selector('#flexCheckChecked')
 
 #=======================================================
 
-devtool.execute_script('alert("hi");')
+devtool.execute_script('alert("click here to continue");')
 
 #=========================================================
 print(devtool.current_url())
@@ -65,4 +65,8 @@ print(devtool.delete_all_cookies())
 #=======================================================
 
 devtool.maximize_window()
+
+#=======================================================
+
+devtool.close()
 
