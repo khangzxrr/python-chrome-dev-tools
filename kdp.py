@@ -98,7 +98,24 @@ class Kdp:
         result = self.send_command({ 'method': 'DOM.getSearchResults', 'params': { 'searchId': search_result['result']['searchId'], 'fromIndex': 0, 'toIndex': 1    }})
 
         return self.seperate_nodes(result['result'])
+    
+    def delete_all_cookies(self):
+        return self.send_command({ 'method': 'Network.clearBrowserCookies', 'params': {}})
+    
+    def get_cookies(self):
+        return self.send_command({ 'method': 'Network.getCookies', 'params': {}})['result']['cookies']
+    
+    def current_url(self):
+        return self.send_command({ 'method': 'Runtime.evaluate', 'params': { 'expression': ' window.location.href'}})['result']['result']['value']
+    
+    def execute_script(self, script):
+        return self.send_command({ 'method': 'Runtime.evaluate', 'params': { 'expression': script}})
 
+    def click_by_css_selector(self, selector):
+
+        expression = 'document.querySelector("%s").click()' % selector
+
+        return self.send_command({ 'method': 'Runtime.evaluate', 'params': { 'expression': expression}})
 
     def find_element_by_selector(self, selector):
         document = self.get_document()
@@ -179,12 +196,21 @@ class Kdp:
 
         self.enable_features()
 
+    def get_window_for_current_target(self):
+        return self.send_command({ 'method': 'Browser.getWindowForTarget', 'params': {}})['result']
 
+    def maximize_window(self):
+
+        window = self.get_window_for_current_target()
+        print(self.send_command({ 'method': 'Browser.setWindowBounds', 'params': { 'windowId': window['windowId'], 'bounds': { 'windowState': 'maximized' }} }))
         
 
+    def launch_chrome(self, *user_args):
 
-    def launch_chrome(self):
-        browsers.launch('chrome', args=['--remote-debugging-port=' + self.port, '--remote-allow-origins=' + self.host])
+        args = list(user_args)
+        args.extend(['--remote-debugging-port=' + self.port, '--remote-allow-origins=' + self.host])
+        
+        browsers.launch('chrome', args=args)
         
         websocketUrl = self.get('/json/version')['webSocketDebuggerUrl']
 

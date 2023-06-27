@@ -4,7 +4,9 @@ import time
 
 devtool = kdp.Kdp()
 
-devtool.launch_chrome()
+#supply arguments ================================
+devtool.launch_chrome('--disable-infobars')
+#===================================================
 
 
 #navigate to google get a href
@@ -40,12 +42,27 @@ devtool.navigate('https://mdbootstrap.com/docs/standard/forms/checkbox/')
 
 
 boat_checkbox = devtool.find_element_by_id('flexCheckChecked')
+devtool.click_by_css_selector('#flexCheckDefault')
 
-print(boat_checkbox)
-# h1_element = devtool.find_all_element_by_xpath('/html/body/div/h1')
+#default checked, click again to uncheck then check again!
+devtool.click_by_css_selector('#flexCheckChecked')
+devtool.click_by_css_selector('#flexCheckChecked')
 
-# print(h1_element[0])
+#=======================================================
+
+devtool.execute_script('alert("hi");')
+
+#=========================================================
+print(devtool.current_url())
+
+#=======================================================
 
 
+print(devtool.get_cookies())
 
+print(devtool.delete_all_cookies())
+
+#=======================================================
+
+devtool.maximize_window()
 
